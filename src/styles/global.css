@@ -1,6 +1,6 @@
 @import "tailwindcss";
-@plugin "@tailwindcss/typography";
 @import "tw-animate-css";
+@plugin "@tailwindcss/typography";
 @plugin "@tailwindcss/forms";
 
 @custom-variant dark {
@@ -153,14 +153,15 @@ main .katex-display {
   --warning-foreground: var(--color-amber-950);
   --error: var(--color-red-800);
   --error-foreground: var(--color-zinc-50);
-  --border: --alpha(var(--color-zinc-50) / 10%);
-  --input: --alpha(var(--color-zinc-50) / 15%);
+  --border: color-mix(in oklab, var(--color-zinc-50) 10%, transparent);
+  --input: color-mix(in oklab, var(--color-zinc-50) 15%, transparent);
   --outline: var(--color-zinc-500);
 }
 
 @layer base {
   * {
-    @apply border-border outline-outline/50 wrap-break-word;
+    @apply border-border wrap-break-word;
+    outline-color: color-mix(in oklab, var(--outline, currentColor) 50%, transparent);
   }
   button {
     @apply cursor-pointer;

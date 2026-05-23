@@ -1,208 +1,229 @@
 ---
-title: Academic Project Page Template
+title: "MUNI: Multimodal Unified Latent Diffusion for Coherent Any-to-Any Generation"
 authors:
-  - name: Roman Hauksson
-    url: https://roman.technology
-    institution: University of Texas at Dallas
-    notes: ["*", †]
-  - name: Author Two
-    institution: Institution Two
-    notes: ["*", †]
-  - name: Author Three
-    institution: Institution Three
+  - name: Kyeongmin Yeo
+    institution: KAIST
     notes: ["*"]
-  - name: Author Four
-    institution: Institution Four
-conference: Conference Name
+  - name: Yunhong Min
+    institution: KAIST
+    notes: ["*"]
+  - name: Minhyuk Sung
+    institution: KAIST
+conference: arXiv preprint
 notes:
   - symbol: "*"
-    text: author note one
-  - symbol: †
-    text: author note two
+    text: Equal contribution.
 links:
   - name: Paper
-    url: https://github.com/RomanHauksson/academic-project-astro-template
+    url: "#citation"
     icon: ri:file-pdf-2-line
-  - name: Code
-    url: https://github.com/RomanHauksson/academic-project-astro-template
-    icon: ri:github-line
   - name: arXiv
-    url: https://github.com/RomanHauksson/academic-project-astro-template
+    url: "#citation"
     icon: academicons:arxiv
-  - name: Slides
-    url: https://github.com/RomanHauksson/academic-project-astro-template
-    icon: ri:slideshow-2-line
-
-# The color theme of the page. Defaults to "device" (the preference set in the user's brower or operating system). Setting this to "light" or "dark" will override the user's preference. This is useful if your figures only look good in one theme.
-theme: device
-
-# This is the icon that appears in the user's browser tab. To customize, change the favicon.svg file in /public/, or add your own file to /public/ and change the filename here.
+  - name: Code
+    url: "#citation"
+    icon: ri:github-line
+theme: light
 favicon: favicon.svg
-
-# These keys are optional. If a link to your project page is in a Google search result, text message, or social media post, it will often appear as a "link preview card" based on its title, description, favicon, and thumbnail. After you publish your page, you can double check that these previews look right using [this tool](https://linkpreview.xyz/)
-description: Simple project page template for your research paper, built with Astro and Tailwind
-thumbnail: screenshot-light.png
+description: "MUNI is an end-to-end multimodal latent diffusion framework for coherent any-to-any image-text-audio generation."
+thumbnail: thumbnail.png
 ---
 
-import Video from "./components/Video.astro";
 import HighlightedSection from "./components/HighlightedSection.astro";
-import SmallCaps from "./components/SmallCaps.astro";
+import AbstractSection from "./components/AbstractSection.astro";
 import Figure from "./components/Figure.astro";
 import Picture from "./components/Picture.astro";
-import ModelViewer from "./components/ModelViewer.astro"
-import TwoColumns from "./components/TwoColumns.astro";
-import YouTubeVideo from "./components/YouTubeVideo.astro";
-import Carousel from "./components/Carousel.astro";
-import CarouselSlide from "./components/CarouselSlide.astro";
-import Wide from "./components/Wide.astro";
+import QualitativeGallery from "./components/QualitativeGallery.astro";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/starwind/tabs";
-import { Comparison } from "./components/Comparison.tsx";
 
-import outside from "./assets/outside.mp4";
-import dogsDiffc from "./assets/dogs-diffc.png"
-import dogsTrue from "./assets/dogs-true.png"
-import dogsMsillm from "@/assets/dogs-msillm.jpg"
+import polyPoe from "@/assets/muni/polymnist/compare_8_63_35_4_39_48_poe.png";
+import polyMoe from "@/assets/muni/polymnist/compare_8_63_35_4_39_48_moe.png";
+import polyMopoe from "@/assets/muni/polymnist/compare_8_63_35_4_39_48_mopoe.png";
+import polyHelvae from "@/assets/muni/polymnist/compare_8_63_35_4_39_48_helvae.png";
+import polyOurs from "@/assets/muni/polymnist/compare_8_63_35_4_39_48_ours_cls.png";
 
-<Video src={outside} />
+import {
+  audioToImageSamples,
+  audioToTextSamples,
+  imageAudioToTextSamples,
+  imageToAudioSamples,
+  imageToTextSamples,
+  mainUnconditionalSamples,
+  textAudioToImageSamples,
+  textImageToAudioSamples,
+  textToAudioSamples,
+  textToImageSamples,
+  uncondGeneralistSamples,
+  uncondVaeSamples,
+} from "@/lib/muni-qualitative";
 
 <HighlightedSection>
 
-## Abstract
-
-This is a template you can use to create a professional project page for your research paper. [See the code for the template and instructions on how to use it yourself on GitHub](https://github.com/RomanHauksson/academic-project-astro-template). It's made with the [Astro web framework](https://astro.build/) and styled with [Tailwind](https://tailwindcss.com/). You write the content in [MDX](https://mdxjs.com/), which enables markdown formatting like **bold**, _italics_, and ~strikethrough~, as well as custom components like <SmallCaps>small caps.</SmallCaps>
+MUNI jointly learns modality-specific encoders, expressive decoders, and a single shared flow-based prior so one model can generate **any missing modality from any observed subset**, including the fully unconditional case.
 
 </HighlightedSection>
 
-## Visuals
+<QualitativeGallery
+  samples={mainUnconditionalSamples}
+  outputTitle="Joint outputs"
+  autoplay={true}
+  autoplayInterval={6500}
+/>
 
-### Picture
+Unconditional image-text-audio co-generation: each triplet is sampled jointly from MUNI's learned prior.
 
-Use the `Picture` component to display images. If you have a figure in PDF format, you can pass in its path as the `src` prop and it will be converted into a web-friendly image automatically.
+## Abstract
 
-<Picture src={dogsDiffc} alt="Photo of two running dogs, lossily compressed using the DiffC algorithm" />
+<AbstractSection>
 
-### Wide visual
+We introduce MUNI, an end-to-end multimodal latent diffusion framework for any-to-any generation that unifies subset-conditioned cross-modal generation and unconditional joint sampling through a shared stochastic latent. Existing multimodal generative models are largely LLM-based, which limits leveraging modality-specific generators and requires text-paired data for training. Recent diffusion- and flow-based any-to-any extensions take a different direction but still rely on text-aligned embeddings, fully-paired training, or matched-dimensionality deterministic mappings. MUNI rests on two complementary contributions, one architectural and one in the training objective. First, we extend latent diffusion to multimodal any-to-any generation *end-to-end*: instead of the standard two-stage recipe that precomputes a frozen latent space and then fits a prior over it, MUNI jointly trains modality-specific encoders, expressive decoders, and a single shared flow-based prior under one objective. Second, we identify that the standard aggregation rules of multimodal variational inference are insufficient once coupled with a learned prior and expressive decoders. A suitable shared latent must simultaneously satisfy *coherence* across generated modalities, *predictive sufficiency* of subset latents, and *minimality* of the latent content. We propose a routed training objective whose structural choices align the latent with these criteria and admit a minimal-sufficiency characterization in the realizable setting. Experiments on PolyMNIST-Quadrant-Labels and a large-scale image-text-audio benchmark show MUNI matching or exceeding the strongest baselines on conditional generation while opening its largest margins on unconditional coherence.
 
-I constrained the maximum width of the text column to make sure it's readable even when the screen is wide. But images and other visuals should "break out" and take up more horizontal space: for this, try wrapping them in the `Wide` component.
+</AbstractSection>
 
-<Wide>
-  <Picture src={dogsDiffc} alt="Photo of two running dogs, lossily compressed using the DiffC algorithm" />
-</Wide>
+## Core Idea
 
-### Figure with caption
+MUNI treats any-to-any generation as a latent-content problem. The shared latent should contain enough information to make independently decoded modalities agree, but not modality-private detail that a stochastic decoder can model.
 
-Wrap a visual in a `Figure` component to add a caption.
+| Criterion | What the latent should do |
+| :--- | :--- |
+| **Coherence** | A prior sample should support a coherent joint image-text-audio tuple. |
+| **Predictivity** | A subset posterior should retain the information needed to generate every missing modality. |
+| **Minimality** | Private variation should stay out of the shared latent and remain stochastic in each decoder. |
 
 <Figure>
-  <Picture slot="figure" src={dogsDiffc} alt="Photo of two running dogs, lossily compressed using the DiffC algorithm" />
-  <Fragment slot="caption">A photo of two dogs running side-by-side in shallow water, lossily compressed using the [DiffC algorithm](https://jeremyiv.github.io/diffc-project-page/).</Fragment>
+  <Picture slot="figure" src="figures/muni/method/framework.pdf" alt="MUNI framework and latent-content overview" />
+  <Fragment slot="caption">MUNI combines modality-specific encoders and decoders with a shared learned prior, then controls what enters the latent through routed training.</Fragment>
 </Figure>
 
-### Comparison slider
+## Routed Training
 
-Use the `Comparison` component to compare two visuals with an interactive slider.
+MUNI uses the same model for every conditioning subset. The routing choices are simple:
 
-<Comparison client:idle >
-  <Picture slot="itemOne" src={dogsDiffc} alt="Photo of two running dogs, lossily compressed using the DiffC algorithm" />
-  <Picture slot="itemTwo" src={dogsTrue} alt="True photo of two dogs running side-by-side in shallow water" />
-</Comparison>
+| Route | Purpose |
+| :--- | :--- |
+| **Non-mixture aggregation** | Fuse all observed modalities into one subset posterior. |
+| **Target-detached self-reconstruction** | Train decoders without rewarding encoders for copying private detail. |
+| **Leave-one-out prior routing** | Train the prior only on broad subset latents that can support coherent joint sampling. |
 
-### Tab panels
+## Main Results: Image-Text-Audio
 
-Tab panels are a great way to display a labeled collection of related visuals without taking up too much space.
+### Many-to-One Alignment
 
-<Tabs defaultValue="true">
+MUNI and MUNI† achieve the best generalist result on every many-to-one metric.
+
+| Generalist | (I+A)→T CLIP ↑ | (I+A)→T CLAP ↑ | (T+A)→I CLIP ↑ | (T+A)→I AIS ↑ | (T+I)→A CLAP ↑ | (T+I)→A AIS ↑ |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| CoDi | 24.05 | 33.72 | 24.98 | 85.52 | 11.06 | 65.31 |
+| OmniFlow | 24.73 | 36.26 | 26.41 | 81.51 | 13.50 | 63.55 |
+| FlowBind | 27.54 | 39.56 | 25.23 | 86.44 | 26.83 | 80.15 |
+| **MUNI** | 25.20 | **39.75** | 25.44 | **93.42** | 26.88 | **87.29** |
+| **MUNI†** | **27.60** | 36.61 | **26.43** | 90.94 | **30.16** | 86.89 |
+
+### Unconditional Coherence
+
+Only OmniFlow among the compared frontier generalists supports fully unconditional joint sampling. MUNI opens its largest margin in this setting.
+
+| Method | T-I CLIP ↑ | T-A CLAP ↑ | A-I AIS ↑ |
+| :--- | ---: | ---: | ---: |
+| OmniFlow | 21.17 | 14.23 | 50.95 |
+| **MUNI** | **26.76** | 23.73 | 81.24 |
+| **MUNI†** | 26.74 | **24.83** | **82.80** |
+
+## Qualitative Any-to-Any Samples
+
+Samples are grouped by the observed source modalities and generated target modality.
+
+<Tabs defaultValue="unconditional">
   <TabsList>
-    <TabsTrigger value="true">Ground truth</TabsTrigger>
-    <TabsTrigger value="diffc">DiffC (Flux-dev)</TabsTrigger>
-    <TabsTrigger value="msillm">MS-ILLM</TabsTrigger>
+    <TabsTrigger value="unconditional">Uncond.</TabsTrigger>
+    <TabsTrigger value="t-to-i">T→I</TabsTrigger>
+    <TabsTrigger value="i-to-t">I→T</TabsTrigger>
+    <TabsTrigger value="a-to-t">A→T</TabsTrigger>
+    <TabsTrigger value="a-to-i">A→I</TabsTrigger>
+    <TabsTrigger value="ia-to-t">I+A→T</TabsTrigger>
+    <TabsTrigger value="ta-to-i">T+A→I</TabsTrigger>
+    <TabsTrigger value="t-to-a">T→A</TabsTrigger>
+    <TabsTrigger value="i-to-a">I→A</TabsTrigger>
+    <TabsTrigger value="ti-to-a">T+I→A</TabsTrigger>
   </TabsList>
-  <TabsContent value="true">
-    <Picture
-      src={dogsTrue}
-      alt="True photo of two dogs running side-by-side in shallow water"
-    />
+  <TabsContent value="unconditional">
+    <QualitativeGallery samples={uncondGeneralistSamples} outputTitle="Joint samples by method" />
+
+    <QualitativeGallery samples={uncondVaeSamples} outputTitle="Joint samples by method" />
   </TabsContent>
-  <TabsContent value="diffc">
-    <Picture
-      src={dogsDiffc}
-      alt="Photo of two running dogs, lossily compressed using the DiffC algorithm"
-    />
+  <TabsContent value="t-to-i">
+    <QualitativeGallery samples={textToImageSamples} outputTitle="Generated images" />
   </TabsContent>
-  <TabsContent value="msillm">
-    <Picture
-      src={dogsMsillm}
-      alt="Photo of two running dogs, lossily compressed using MS-ILLM"
-    />
+  <TabsContent value="i-to-t">
+    <QualitativeGallery samples={imageToTextSamples} outputTitle="Generated text" />
+  </TabsContent>
+  <TabsContent value="a-to-t">
+    <QualitativeGallery samples={audioToTextSamples} outputTitle="Generated text" />
+  </TabsContent>
+  <TabsContent value="a-to-i">
+    <QualitativeGallery samples={audioToImageSamples} outputTitle="Generated images" />
+  </TabsContent>
+  <TabsContent value="ia-to-t">
+    <QualitativeGallery samples={imageAudioToTextSamples} outputTitle="Generated text" />
+  </TabsContent>
+  <TabsContent value="ta-to-i">
+    <QualitativeGallery samples={textAudioToImageSamples} outputTitle="Generated images" />
+  </TabsContent>
+  <TabsContent value="t-to-a">
+    <QualitativeGallery samples={textToAudioSamples} outputTitle="Generated audio" />
+  </TabsContent>
+  <TabsContent value="i-to-a">
+    <QualitativeGallery samples={imageToAudioSamples} outputTitle="Generated audio" />
+  </TabsContent>
+  <TabsContent value="ti-to-a">
+    <QualitativeGallery samples={textImageToAudioSamples} outputTitle="Generated audio" />
   </TabsContent>
 </Tabs>
 
-### Carousel
+## Controlled Benchmark: PolyMNIST
 
-A carousel is another useful pattern for a collection of visuals that don't necessarily have meaningful labels.
+PolyMNIST-Quadrant-Labels is a controlled setting for checking whether jointly sampled modalities agree on digit identity and quadrant position. It is useful diagnostically, but the main webpage emphasis is the image-text-audio result above.
 
-<Carousel>
-  <CarouselSlide>
-    <Picture src={dogsTrue} alt="True photo of two dogs running side-by-side in shallow water" />
-  </CarouselSlide>
-  <CarouselSlide>
-    <Picture src={dogsDiffc} alt="Photo of two running dogs, lossily compressed using the DiffC algorithm" />
-  </CarouselSlide>
-  <CarouselSlide>
-    <Picture
-      src={dogsMsillm}
-      alt="Photo of two running dogs, lossily compressed using MS-ILLM"
-    />
-  </CarouselSlide>
-</Carousel>
+| Method | Single-L→I Digit ↑ | Single-L→I Quadrant ↑ | Multi-L→I Both ↑ | Uncond. Coherence ↑ |
+| :--- | ---: | ---: | ---: | ---: |
+| MVAE | 0.4137 | 0.6803 | 0.7053 | 0.0079 |
+| MMVAE | 0.9279 | **0.9999** | 0.1630 | 0.3167 |
+| MoPoE | 0.9199 | **0.9999** | 0.9283 | 0.3943 |
+| HELVAE | **0.9297** | **0.9999** | 0.7654 | 0.4246 |
+| **MUNI** | 0.9131 | **0.9999** | **0.9346** | **0.4841** |
 
-## Two columns
-
-Use the two columns component to display two columns of content. In this example, the first column contains a YouTube video embed and the second column contains an interactive 3D model viewer. By default, they display side by side, but if the screen is narrow enough (for example, on mobile), they're arranged vertically.
-
-<TwoColumns>
-  <YouTubeVideo slot="left" videoId="wjZofJX0v4M" />
-  <ModelViewer slot="right" src="/BoxVertexColors.glb" alt="A cube colored with a rainbow gradient" />
-</TwoColumns>
-
-## $\LaTeX$
-
-You can also add $\LaTeX$ formulas, rendered during the build process using [$\KaTeX$](https://katex.org/) so they're quick to load for visitors of your project page. You can write them inline, like this: $a^2 + b^2 = c^2$. Or, you can write them as a block:
-
-$$
-\int_a^b f(x) dx
-$$
+<Figure>
+  <table slot="figure">
+    <tbody>
+      <tr>
+        <th>MVAE</th>
+        <th>MMVAE</th>
+        <th>MoPoE</th>
+        <th>HELVAE</th>
+        <th>MUNI</th>
+      </tr>
+      <tr>
+        <td><Picture src={polyPoe} alt="PolyMNIST unconditional sample from MVAE" /></td>
+        <td><Picture src={polyMoe} alt="PolyMNIST unconditional sample from MMVAE" /></td>
+        <td><Picture src={polyMopoe} alt="PolyMNIST unconditional sample from MoPoE" /></td>
+        <td><Picture src={polyHelvae} alt="PolyMNIST unconditional sample from HELVAE" /></td>
+        <td><Picture src={polyOurs} alt="PolyMNIST unconditional sample from MUNI" /></td>
+      </tr>
+    </tbody>
+  </table>
+  <Fragment slot="caption">Unconditional PolyMNIST co-generation. Coherent samples preserve digit identity and quadrant position across generated image and label modalities.</Fragment>
+</Figure>
 
 ## Citation
 
-If you copy your bibliography into `./bibliography.bib`, you can cite papers using their BibTeX keys, and they'll be automatically formatted and included in the bibliography section at the end. For example: [@vaswani2017attention]. Note that these citations are distinct from footnotes[^mynote], which show up in a separate section if you use them.
-
-[^mynote]: On the web, they should really be called "endnotes", since each page constitutes a full document.
-
-## Table
-
-Add simple tables using [GitHub Flavored Markdown syntax](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/organizing-information-with-tables):
-
-| Model | Accuracy | F1 score | Training time (hours) |
-| :--- | :---: | :---: | :---: |
-| BERT-base | 0.89 | 0.87 | 4.5 |
-| RoBERTa-large | 0.92 | 0.91 | 7.2 |
-| DistilBERT | 0.86 | 0.84 | 2.1 |
-| XLNet | 0.90 | 0.89 | 6.8 |
-
-## BibTeX citation
-
-Displaying the BibTeX entry for your paper in a code block makes it easy to copy and paste.
-
 ```bibtex
-@misc{roman2024academic,
-  author = "{Roman Hauksson}",
-  title = "Academic Project Page Template",
-  year = "2024",
-  howpublished = "\url{https://research-template.roman.technology}",
+@misc{yeo2026muni,
+  title         = {MUNI: Multimodal Unified Latent Diffusion for Coherent Any-to-Any Generation},
+  author        = {Yeo, Kyeongmin and Min, Yunhong and Sung, Minhyuk},
+  year          = {2026},
+  eprint        = {TBA},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CV},
+  url           = {TBA}
 }
 ```
-
-## Bibliography
-
-[^ref]

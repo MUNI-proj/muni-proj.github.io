@@ -3,6 +3,10 @@
   "type": "module",
   "version": "0.0.1",
   "scripts": {
+    "assets:waveforms": "node scripts/render-waveforms.mjs",
+    "predev": "npm run assets:waveforms",
+    "prestart": "npm run assets:waveforms",
+    "prebuild": "npm run assets:waveforms",
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro check && astro build",

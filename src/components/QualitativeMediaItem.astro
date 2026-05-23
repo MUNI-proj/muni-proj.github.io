@@ -1,0 +1,139 @@
+---
+import AudioControl from "./AudioControl.astro";
+import type { MediaItem } from "@/lib/muni-qualitative";
+
+interface Props {
+  item: MediaItem;
+}
+
+const { item } = Astro.props;
+
+const surfaceClass = `sample-media sample-media--${item.kind}`;
+const displayText = item.text?.trim() ?? "";
+const quotedText = `“${displayText}”`;
+const textLength = displayText.length;
+const textClass =
+  textLength > 90
+    ? "sample-text sample-text--long"
+    : textLength > 55
+      ? "sample-text sample-text--medium"
+      : "sample-text sample-text--short";
+---
+
+<div class="sample-media-item">
+  <div class="sample-media-label">{item.label}</div>
+  <div class={surfaceClass}>
+    {
+      item.kind === "image" && item.src && (
+        <img
+          src={item.src}
+          alt={item.alt ?? item.label}
+          loading="lazy"
+          decoding="async"
+        />
+      )
+    }
+    {
+      item.kind === "audio" && (
+        <div class="audio-stack">
+          {item.waveformSrc && (
+            <img
+              class="audio-waveform"
+              src={item.waveformSrc}
+              alt={item.waveformAlt ?? item.label}
+              loading="lazy"
+              decoding="async"
+            />
+          )}
+          {item.src && <AudioControl src={item.src} label={item.label} />}
+        </div>
+      )
+    }
+    {
+      item.kind === "text" && (
+        <p class={textClass}>
+          {quotedText}
+        </p>
+      )
+    }
+    {
+      item.kind === "empty" && (
+        <p>
+          {item.text}
+        </p>
+      )
+    }
+  </div>
+</div>
+
+<style>
+  @reference "../styles/global.css";
+
+  .sample-media-item {
+    @apply min-w-0;
+  }
+
+  .sample-media-label {
+    @apply mb-1.5 text-xs font-semibold leading-tight text-zinc-700 dark:text-zinc-300;
+  }
+
+  .sample-media {
+    @apply relative grid aspect-square min-w-0 place-items-center overflow-hidden rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950;
+  }
+
+  .sample-media--image {
+    @apply bg-zinc-50 p-1.5 dark:bg-zinc-900;
+  }
+
+  .sample-media--audio {
+    @apply bg-zinc-50 p-3 dark:bg-zinc-900;
+  }
+
+  .sample-media--text,
+  .sample-media--empty {
+    @apply items-start bg-zinc-50 p-3 dark:bg-zinc-900;
+  }
+
+  .sample-media--text {
+    @apply place-items-center bg-white p-4 dark:bg-zinc-950;
+  }
+
+  .sample-media--image > img {
+    @apply h-full w-full rounded-sm object-cover;
+  }
+
+  .audio-stack {
+    @apply grid h-full w-full min-w-0 grid-rows-[1fr_auto] gap-2;
+  }
+
+  .audio-waveform {
+    @apply h-full min-h-0 w-full rounded-sm object-contain;
+  }
+
+  .sample-media--text p,
+  .sample-media--empty p {
+    @apply m-0 h-full w-full overflow-auto whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-100;
+  }
+
+  .sample-media--text p {
+    @apply flex items-center justify-center overflow-hidden whitespace-normal text-center leading-snug font-semibold text-zinc-950 dark:text-zinc-50;
+    text-wrap: balance;
+    hyphens: auto;
+  }
+
+  .sample-text--short {
+    @apply text-base sm:text-lg;
+  }
+
+  .sample-text--medium {
+    @apply text-sm sm:text-base;
+  }
+
+  .sample-text--long {
+    @apply text-xs leading-relaxed sm:text-sm;
+  }
+
+  .sample-media--empty p {
+    @apply text-zinc-500 dark:text-zinc-400;
+  }
+</style>

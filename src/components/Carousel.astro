@@ -8,6 +8,13 @@ const { document } = parseHTML(html);
 const children = Array.from(document.children);
 const numSlides = children.length;
 
+interface Props {
+  autoplay?: boolean;
+  autoplayInterval?: number;
+}
+
+const { autoplay = false, autoplayInterval = 6000 } = Astro.props;
+
 children.forEach((child, index) => {
   child.setAttribute("data-index", String(index));
 });
@@ -15,43 +22,44 @@ children.forEach((child, index) => {
 const slidesHtml = children.map((child) => child.outerHTML).join("");
 ---
 
-<div class="carousel-wrapper">
-  <div class="not-prose my-4 flex items-center justify-center">
-    <button
-      class="navigation-button prev-button h-[3rem] w-[3rem] cursor-pointer content-center disabled:cursor-not-allowed disabled:opacity-50 active:[&>svg]:scale-none!"
-      type="button"
-      ><Icon
-        class="mx-auto h-[2rem] w-[2rem] dark:text-zinc-200"
-        name="ri:arrow-drop-left-line"
-      /></button
-    >
-    <div class="flex">
-      {
-        Array.from({ length: numSlides }).map(() => (
-          <button
-            class="page-button h-[3rem] w-[3rem] cursor-pointer content-center active:[&>div]:scale-none!"
-            type="button"
-          >
-            <div class="mx-auto h-[0.5rem] w-[0.5rem] rounded-full bg-black transition dark:bg-zinc-200" />
-          </button>
-        ))
-      }
-    </div>
-    <button
-      class="navigation-button next-button h-[3rem] w-[3rem] cursor-pointer content-center disabled:cursor-not-allowed disabled:opacity-50 active:[&>svg]:scale-none!"
-      type="button"
-      ><Icon
-        class="mx-auto h-[2rem] w-[2rem] transition dark:text-zinc-200"
-        name="ri:arrow-drop-right-line"
-      /></button
-    >
-  </div>
-  <div
-    class="carousel-viewport mx-[calc(var(--slide-gap)/-2)] w-[calc(var(--actual-text-width)+var(--slide-gap))]"
-  >
-    <div
-      class="carousel mx-[calc(var(--actual-inline-margin)*-1+var(--slide-gap)/2)] flex snap-x snap-mandatory scroll-pl-[calc(var(--actual-inline-margin)-var(--slide-gap)/2)] [scrollbar-width:none] overflow-scroll px-[var(--actual-inline-margin)]"
-    >
+<div
+  class="carousel-wrapper"
+  data-autoplay={autoplay ? "true" : "false"}
+  data-autoplay-interval={autoplayInterval}
+>
+  {
+    numSlides > 1 && (
+      <div class="carousel-controls not-prose">
+        <button
+          class="navigation-button prev-button"
+          type="button"
+          aria-label="Previous example"
+        >
+          <Icon name="ri:arrow-left-s-line" />
+        </button>
+        <div class="carousel-pages" aria-label="Examples">
+          {Array.from({ length: numSlides }).map((_, index) => (
+            <button
+              class="page-button"
+              type="button"
+              aria-label={`Go to example ${index + 1}`}
+            >
+              <span />
+            </button>
+          ))}
+        </div>
+        <button
+          class="navigation-button next-button"
+          type="button"
+          aria-label="Next example"
+        >
+          <Icon name="ri:arrow-right-s-line" />
+        </button>
+      </div>
+    )
+  }
+  <div class="carousel-viewport">
+    <div class="carousel">
       <Fragment set:html={slidesHtml} />
     </div>
   </div>
@@ -66,6 +74,7 @@ const slidesHtml = children.map((child) => child.outerHTML).join("");
     const carouselViewport = wrapper.querySelector(
       "div.carousel-viewport",
     ) as HTMLDivElement;
+    const carousel = wrapper.querySelector("div.carousel") as HTMLDivElement;
     const slides = wrapper.querySelectorAll(
       "div.slide",
     ) as NodeListOf<HTMLDivElement>;
@@ -84,60 +93,247 @@ const slidesHtml = children.map((child) => child.outerHTML).join("");
 
     if (
       !carouselViewport ||
+      !carousel ||
       !prevButton ||
       !nextButton ||
-      slides.length === 0
+      slides.length === 0 ||
+      slideViewports.length === 0
     ) {
       return;
     }
 
     let currentIndex = 0;
+    let programmaticTargetIndex: number | null = null;
+    let settleTimer: number | undefined;
+    let autoplayTimer: number | undefined;
+    let isHovered = false;
+    let isFocusWithin = false;
+    let isAudioPlaying = false;
+    const shouldAutoplay = wrapper.dataset.autoplay === "true";
+    const parsedAutoplayInterval = Number(wrapper.dataset.autoplayInterval);
+    const autoplayInterval = Number.isFinite(parsedAutoplayInterval)
+      ? Math.max(parsedAutoplayInterval, 2000)
+      : 6000;
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    function wrapIndex(index: number) {
+      return (index + slides.length) % slides.length;
+    }
+
+    function setActiveIndex(index: number) {
+      currentIndex = index;
+      updateButtonStates();
+    }
 
     function updateButtonStates() {
-      prevButton.disabled = currentIndex === 0;
-      nextButton.disabled = currentIndex === slides.length - 1;
+      const hasMultipleSlides = slides.length > 1;
+      prevButton.disabled = !hasMultipleSlides;
+      nextButton.disabled = !hasMultipleSlides;
       paginationButtons.forEach((item, index) => {
-        item.classList.toggle("active", index === currentIndex);
+        const isActive = index === currentIndex;
+        item.classList.toggle("active", isActive);
+        item.setAttribute("aria-current", isActive ? "true" : "false");
       });
     }
 
-    function goToSlide(index: number) {
-      if (index < 0 || index >= slides.length) {
+    function getSlideLeft(index: number) {
+      const carouselRect = carousel.getBoundingClientRect();
+      const slideRect = slideViewports[index].getBoundingClientRect();
+      return carousel.scrollLeft + slideRect.left - carouselRect.left;
+    }
+
+    function getNearestSlideIndex() {
+      let nearestIndex = 0;
+      let nearestDistance = Math.abs(getSlideLeft(0) - carousel.scrollLeft);
+
+      for (let index = 1; index < slideViewports.length; index += 1) {
+        const distance = Math.abs(getSlideLeft(index) - carousel.scrollLeft);
+        if (distance < nearestDistance) {
+          nearestIndex = index;
+          nearestDistance = distance;
+        }
+      }
+
+      return nearestIndex;
+    }
+
+    function finishProgrammaticScroll() {
+      if (settleTimer) {
+        window.clearTimeout(settleTimer);
+      }
+
+      settleTimer = window.setTimeout(() => {
+        if (programmaticTargetIndex !== null) {
+          setActiveIndex(programmaticTargetIndex);
+          programmaticTargetIndex = null;
+          return;
+        }
+
+        setActiveIndex(getNearestSlideIndex());
+      }, 120);
+    }
+
+    function canAutoplay() {
+      return (
+        shouldAutoplay &&
+        slides.length > 1 &&
+        !prefersReducedMotion &&
+        !document.hidden &&
+        !isHovered &&
+        !isFocusWithin &&
+        !isAudioPlaying
+      );
+    }
+
+    function stopAutoplay() {
+      if (!autoplayTimer) {
         return;
       }
 
-      slideViewports[index].scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "start",
+      window.clearInterval(autoplayTimer);
+      autoplayTimer = undefined;
+    }
+
+    function startAutoplay() {
+      stopAutoplay();
+
+      if (!canAutoplay()) {
+        return;
+      }
+
+      autoplayTimer = window.setInterval(() => {
+        if (programmaticTargetIndex !== null) {
+          return;
+        }
+
+        goToSlide(currentIndex + 1);
+      }, autoplayInterval);
+    }
+
+    function refreshAutoplay() {
+      stopAutoplay();
+      startAutoplay();
+    }
+
+    function goToSlide(index: number) {
+      const nextIndex = wrapIndex(index);
+
+      programmaticTargetIndex = nextIndex;
+      setActiveIndex(nextIndex);
+      carousel.scrollTo({
+        left: getSlideLeft(nextIndex),
+        behavior: prefersReducedMotion ? "auto" : "smooth",
       });
-      updateButtonStates();
+      finishProgrammaticScroll();
     }
 
     prevButton.addEventListener("click", () => {
       goToSlide(currentIndex - 1);
+      refreshAutoplay();
     });
 
     nextButton.addEventListener("click", () => {
       goToSlide(currentIndex + 1);
+      refreshAutoplay();
     });
 
     paginationButtons.forEach((item, index) => {
       item.addEventListener("click", () => {
         goToSlide(index);
+        refreshAutoplay();
       });
     });
 
-    updateButtonStates();
+    carousel.addEventListener("scroll", () => {
+      if (programmaticTargetIndex !== null) {
+        finishProgrammaticScroll();
+      }
+    });
 
-    if (slideViewports.length === 0) {
-      return;
-    }
+    carousel.addEventListener("pointerdown", () => {
+      programmaticTargetIndex = null;
+      stopAutoplay();
+    });
+
+    carousel.addEventListener(
+      "wheel",
+      () => {
+        programmaticTargetIndex = null;
+        stopAutoplay();
+      },
+      { passive: true },
+    );
+
+    wrapper.addEventListener("mouseenter", () => {
+      isHovered = true;
+      stopAutoplay();
+    });
+
+    wrapper.addEventListener("mouseleave", () => {
+      isHovered = false;
+      refreshAutoplay();
+    });
+
+    wrapper.addEventListener("focusin", () => {
+      isFocusWithin = true;
+      stopAutoplay();
+    });
+
+    wrapper.addEventListener("focusout", (event) => {
+      const nextFocusedTarget = event.relatedTarget;
+      if (
+        nextFocusedTarget instanceof Node &&
+        wrapper.contains(nextFocusedTarget)
+      ) {
+        return;
+      }
+
+      isFocusWithin = false;
+      refreshAutoplay();
+    });
+
+    wrapper.addEventListener(
+      "play",
+      () => {
+        isAudioPlaying = true;
+        stopAutoplay();
+      },
+      true,
+    );
+
+    wrapper.addEventListener(
+      "pause",
+      () => {
+        isAudioPlaying = false;
+        refreshAutoplay();
+      },
+      true,
+    );
+
+    wrapper.addEventListener(
+      "ended",
+      () => {
+        isAudioPlaying = false;
+        refreshAutoplay();
+      },
+      true,
+    );
+
+    document.addEventListener("visibilitychange", refreshAutoplay);
+
+    updateButtonStates();
+    startAutoplay();
 
     const observer = new IntersectionObserver(
       (entries) => {
         const visibleEntries = entries.filter((entry) => entry.isIntersecting);
         if (visibleEntries.length === 0) {
+          return;
+        }
+
+        if (programmaticTargetIndex !== null) {
           return;
         }
 
@@ -151,11 +347,10 @@ const slidesHtml = children.map((child) => child.outerHTML).join("");
           return;
         }
 
-        currentIndex = nextIndex;
-        updateButtonStates();
+        setActiveIndex(nextIndex);
       },
       {
-        root: carouselViewport,
+        root: carousel,
         threshold: 0.5,
       },
     );
@@ -170,24 +365,48 @@ const slidesHtml = children.map((child) => child.outerHTML).join("");
     --slide-gap: 1rem;
   }
 
-  @media (hover: none) and (pointer: coarse) {
-    .navigation-button {
-      display: none;
-    }
+  .carousel-wrapper {
+    @apply w-full min-w-0;
   }
 
-  .page-button.active > div {
-    @apply scale-[1.4] bg-orange-600 dark:bg-orange-300;
+  .carousel-controls {
+    @apply my-3 flex items-center justify-end gap-1.5;
   }
 
-  .page-button:active > div {
-    @apply scale-100;
+  .carousel-viewport {
+    @apply w-full min-w-0 overflow-hidden;
   }
 
-  @media (hover: hover) {
-    .page-button:hover > div,
-    .navigation-button:hover:not(:disabled) > svg {
-      @apply scale-[1.4];
-    }
+  .carousel {
+    @apply flex w-full min-w-0 snap-x snap-mandatory overflow-x-auto [scrollbar-width:none];
+    scroll-padding-inline: 0;
+  }
+
+  .navigation-button {
+    @apply grid h-8 w-8 cursor-pointer place-items-center rounded-md border border-zinc-200 bg-white text-zinc-700 transition-[background-color,border-color,color] disabled:cursor-not-allowed disabled:opacity-35 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:border-zinc-700 dark:hover:bg-zinc-900 dark:hover:text-zinc-50;
+  }
+
+  .navigation-button :global(svg) {
+    @apply h-5 w-5;
+  }
+
+  .carousel-pages {
+    @apply flex h-8 items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 dark:border-zinc-800 dark:bg-zinc-950;
+  }
+
+  .page-button {
+    @apply grid h-5 w-4 cursor-pointer place-items-center rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500;
+  }
+
+  .page-button > span {
+    @apply h-1.5 w-1.5 rounded-full bg-zinc-300 transition-[background-color,width] dark:bg-zinc-700;
+  }
+
+  .page-button.active > span {
+    @apply w-4 bg-zinc-900 dark:bg-zinc-100;
+  }
+
+  .carousel::-webkit-scrollbar {
+    display: none;
   }
 </style>

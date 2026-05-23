@@ -1,0 +1,339 @@
+---
+import { Icon } from "astro-icon/components";
+import Carousel from "./Carousel.astro";
+import CarouselSlide from "./CarouselSlide.astro";
+import QualitativeMediaItem from "./QualitativeMediaItem.astro";
+import type { MediaItem, QualitativeSample } from "@/lib/muni-qualitative";
+
+interface Props {
+  samples: QualitativeSample[];
+  sourceTitle?: string;
+  outputTitle?: string;
+  autoplay?: boolean;
+  autoplayInterval?: number;
+}
+
+const {
+  samples,
+  sourceTitle = "Source",
+  outputTitle = "Generation",
+  autoplay = false,
+  autoplayInterval = 6000,
+} = Astro.props;
+
+const mediaGridClass = (itemCount: number) => {
+  if (itemCount <= 1) return "media-grid media-grid--one";
+  if (itemCount === 2) return "media-grid media-grid--two";
+  if (itemCount >= 4) return "media-grid media-grid--four";
+  return "media-grid";
+};
+
+const sourceFlowGridClass = (itemCount: number) =>
+  itemCount <= 1
+    ? "flow-source-grid flow-source-grid--one"
+    : "flow-source-grid flow-source-grid--multi";
+
+const flowRowClass = (itemCount: number) =>
+  itemCount <= 1
+    ? "flow-row flow-row--one-source"
+    : "flow-row flow-row--multi-source";
+
+const isOursOutput = (item: MediaItem) =>
+  /^(muni|ours)$/i.test(item.label.trim());
+
+const asTargetOutput = (item: MediaItem | undefined): MediaItem | undefined =>
+  item ? { ...item, label: "MUNI (Ours)" } : undefined;
+---
+
+<div class="qualitative-gallery not-prose my-5">
+  <Carousel autoplay={autoplay} autoplayInterval={autoplayInterval}>
+    {
+      samples.map((sample) => {
+        const sourceItems = sample.sources ?? [];
+        const outputItems = sample.outputs ?? [];
+        const oursIndex = outputItems.findIndex(isOursOutput);
+        const hasFlowHighlight = sourceItems.length > 0 && oursIndex >= 0;
+        const targetOutput = hasFlowHighlight
+          ? asTargetOutput(outputItems[oursIndex])
+          : undefined;
+        const baselineOutputs = hasFlowHighlight
+          ? outputItems.filter((_, index) => index !== oursIndex)
+          : outputItems;
+        const rowClass = flowRowClass(sourceItems.length);
+
+        return (
+          <CarouselSlide>
+            <article
+              class="qualitative-sample rounded-md border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 sm:p-4"
+              aria-label={sample.title}
+            >
+              <div class="sample-body">
+                {hasFlowHighlight ? (
+                  <>
+                    <section class="flow-block min-w-0" aria-label={`${sample.title} source to target result`}>
+                      <div class={rowClass}>
+                        <h4 class="flow-heading flow-heading--source">{sourceTitle}</h4>
+
+                        <div class={sourceFlowGridClass(sourceItems.length)}>
+                          {sourceItems.map((item) => (
+                            <QualitativeMediaItem item={item} />
+                          ))}
+                        </div>
+
+                        <div class="flow-arrow" aria-hidden="true">
+                          <Icon name="ri:arrow-right-line" />
+                        </div>
+
+                        <h4 class="flow-heading flow-heading--target">Target</h4>
+
+                        <div class="flow-target-grid">
+                          {targetOutput && <QualitativeMediaItem item={targetOutput} />}
+                        </div>
+                      </div>
+                    </section>
+
+                    {baselineOutputs.length > 0 && (
+                      <section class="baseline-block min-w-0">
+                        <h4 class="flow-heading">Baselines</h4>
+                        <div class={`baseline-grid ${mediaGridClass(baselineOutputs.length)}`}>
+                          {baselineOutputs.map((item) => (
+                            <QualitativeMediaItem item={item} />
+                          ))}
+                        </div>
+                      </section>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {sourceItems.length > 0 && (
+                      <section class="min-w-0">
+                        <h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                          {sourceTitle}
+                        </h4>
+                        <div class={mediaGridClass(sourceItems.length)}>
+                          {sourceItems.map((item) => (
+                            <QualitativeMediaItem item={item} />
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    {baselineOutputs.length > 0 && (
+                      <section class="min-w-0">
+                        <h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                          {outputTitle}
+                        </h4>
+                        <div class={mediaGridClass(baselineOutputs.length)}>
+                          {baselineOutputs.map((item) => (
+                            <QualitativeMediaItem item={item} />
+                          ))}
+                        </div>
+                      </section>
+                    )}
+                  </>
+                )}
+
+                {sample.groups && sample.groups.length > 0 && (
+                  <section class="min-w-0 space-y-3">
+                    <h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                      {outputTitle}
+                    </h4>
+                    {sample.groups.map((group) => (
+                      <div class="border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                        <div class="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                          {group.label}
+                        </div>
+                        <div class={mediaGridClass(group.items.length)}>
+                          {group.items.map((item) => (
+                            <QualitativeMediaItem item={item} />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </section>
+                )}
+              </div>
+
+              {sample.note && (
+                <p class="mt-4 mb-0 text-sm text-zinc-600 dark:text-zinc-400">
+                  {sample.note}
+                </p>
+              )}
+            </article>
+          </CarouselSlide>
+        );
+      })
+    }
+  </Carousel>
+</div>
+
+<style>
+  @reference "../styles/global.css";
+
+  .qualitative-gallery {
+    --qualitative-item-size: 13rem;
+    --qualitative-multi-source-width: calc(
+      var(--qualitative-item-size) * 2 + 0.75rem
+    );
+    --sample-label-offset: 1.375rem;
+  }
+
+  .qualitative-sample {
+    @apply min-w-0;
+  }
+
+  .sample-body {
+    @apply min-w-0;
+  }
+
+  .media-grid {
+    @apply grid gap-3;
+    grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+  }
+
+  .media-grid--one {
+    max-width: 100%;
+  }
+
+  .media-grid--two {
+    grid-template-columns: 1fr;
+  }
+
+  .media-grid--four {
+    grid-template-columns: repeat(auto-fit, minmax(min(10.5rem, 100%), 1fr));
+  }
+
+  .baseline-grid {
+    @apply justify-center;
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(var(--qualitative-item-size), 100%), var(--qualitative-item-size))
+    );
+  }
+
+  .flow-row {
+    @apply grid items-center justify-items-center gap-3;
+    grid-template-areas:
+      "srcHead"
+      "srcArea"
+      "arrowArea"
+      "targetHead"
+      "targetArea";
+  }
+
+  .flow-heading {
+    @apply mb-2 text-center text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400;
+  }
+
+  .flow-heading--source {
+    grid-area: srcHead;
+  }
+
+  .flow-heading--target {
+    grid-area: targetHead;
+  }
+
+  .flow-source-grid,
+  .flow-target-grid {
+    @apply grid justify-center gap-3;
+    grid-template-columns: minmax(
+      min(var(--qualitative-item-size), 100%),
+      var(--qualitative-item-size)
+    );
+  }
+
+  .flow-source-grid {
+    @apply mx-auto w-full;
+    grid-area: srcArea;
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(var(--qualitative-item-size), 100%), var(--qualitative-item-size))
+    );
+    max-width: min(26.5rem, 100%);
+  }
+
+  .flow-source-grid--one {
+    max-width: min(var(--qualitative-item-size), 100%);
+  }
+
+  .flow-target-grid {
+    @apply mx-auto w-full;
+    grid-area: targetArea;
+    max-width: min(var(--qualitative-item-size), 100%);
+  }
+
+  .flow-arrow {
+    @apply grid h-8 w-8 place-items-center text-zinc-400 dark:text-zinc-500;
+    grid-area: arrowArea;
+    transform: rotate(90deg);
+  }
+
+  .flow-arrow :global(svg) {
+    @apply h-6 w-6;
+  }
+
+  .flow-block {
+    @apply pb-1;
+  }
+
+  .baseline-block {
+    @apply mt-5 border-t border-zinc-100 pt-4 dark:border-zinc-800;
+  }
+
+  @media (min-width: 40rem) {
+    .media-grid--one {
+      max-width: min(13rem, 100%);
+    }
+
+    .media-grid--two {
+      grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 13rem));
+    }
+  }
+
+  @media (min-width: 48rem) {
+    .flow-row {
+      grid-template-areas:
+        "srcHead . targetHead"
+        "srcArea arrowArea targetArea";
+      justify-content: center;
+      justify-items: stretch;
+      align-items: center;
+      column-gap: 1.25rem;
+      row-gap: 0;
+    }
+
+    .flow-row--one-source {
+      grid-template-columns: var(--qualitative-item-size) 2rem var(
+          --qualitative-item-size
+        );
+    }
+
+    .flow-row--multi-source {
+      grid-template-columns: var(--qualitative-multi-source-width) 2rem var(
+          --qualitative-item-size
+        );
+    }
+
+    .flow-source-grid--one {
+      width: 100%;
+      max-width: none;
+    }
+
+    .flow-source-grid--multi {
+      grid-template-columns: repeat(2, minmax(0, var(--qualitative-item-size)));
+      width: 100%;
+      max-width: none;
+    }
+
+    .flow-target-grid {
+      width: 100%;
+      max-width: none;
+    }
+
+    .flow-arrow {
+      @apply self-center;
+      margin-top: var(--sample-label-offset);
+      transform: none;
+    }
+  }
+</style>

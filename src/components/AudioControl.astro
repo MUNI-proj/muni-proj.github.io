@@ -1,0 +1,385 @@
+---
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  src: string;
+  label: string;
+}
+
+const { src, label } = Astro.props;
+const downloadName = src.split("/").at(-1) ?? "audio.wav";
+---
+
+<div class="audio-control" data-audio-control data-audio-label={label}>
+  <audio preload="metadata" src={src}></audio>
+  <button class="audio-button audio-play" type="button" aria-label={`Play ${label}`} data-play>
+    <span class="audio-icon audio-icon--play"><Icon name="ri:play-fill" /></span>
+    <span class="audio-icon audio-icon--pause"><Icon name="ri:pause-fill" /></span>
+  </button>
+  <input
+    class="audio-progress"
+    type="range"
+    min="0"
+    max="1"
+    step="0.001"
+    value="0"
+    aria-label={`Seek ${label}`}
+    data-progress
+  />
+  <button class="audio-button audio-volume-button" type="button" aria-label={`Mute ${label}`} data-mute>
+    <span class="audio-icon audio-icon--volume"><Icon name="ri:volume-up-line" /></span>
+    <span class="audio-icon audio-icon--muted"><Icon name="ri:volume-mute-line" /></span>
+  </button>
+  <div class="audio-menu-shell">
+    <button
+      class="audio-button audio-options"
+      type="button"
+      aria-label={`Open options for ${label}`}
+      aria-haspopup="menu"
+      aria-expanded="false"
+      data-menu-button
+    >
+      <Icon name="ri:more-2-fill" />
+    </button>
+    <div class="audio-menu" role="menu" data-menu>
+      <div class="audio-menu-row">
+        <span class="audio-menu-label">Volume</span>
+        <input
+          class="audio-volume"
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value="1"
+          aria-label={`Volume for ${label}`}
+          data-volume
+        />
+      </div>
+      <div class="audio-speed-row" aria-label={`Playback speed for ${label}`}>
+        <button type="button" data-speed="0.75" aria-checked="false">0.75</button>
+        <button type="button" data-speed="1" aria-checked="true">1x</button>
+        <button type="button" data-speed="1.25" aria-checked="false">1.25</button>
+      </div>
+      <a class="audio-menu-item" href={src} download={downloadName} role="menuitem">
+        <Icon name="ri:download-2-line" />
+        <span>Download</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const controls = document.querySelectorAll<HTMLElement>("[data-audio-control]");
+  const audioWindow = window as Window & { __muniAudioGlobalBound?: boolean };
+
+  const setProgressFill = (input: HTMLInputElement, value: number) => {
+    input.style.setProperty("--range-fill", `${Math.max(0, Math.min(1, value)) * 100}%`);
+  };
+
+  const closeMenu = (control: HTMLElement) => {
+    control.dataset.menuOpen = "false";
+    control.querySelector<HTMLButtonElement>("[data-menu-button]")?.setAttribute(
+      "aria-expanded",
+      "false",
+    );
+  };
+
+  const closeOtherMenus = (current?: HTMLElement) => {
+    for (const control of document.querySelectorAll<HTMLElement>("[data-audio-control]")) {
+      if (control !== current) closeMenu(control);
+    }
+  };
+
+  for (const control of controls) {
+    if (control.dataset.bound === "true") continue;
+    control.dataset.bound = "true";
+
+    const audio = control.querySelector("audio");
+    const playButton = control.querySelector<HTMLButtonElement>("[data-play]");
+    const muteButton = control.querySelector<HTMLButtonElement>("[data-mute]");
+    const menuButton = control.querySelector<HTMLButtonElement>("[data-menu-button]");
+    const menu = control.querySelector<HTMLElement>("[data-menu]");
+    const progress = control.querySelector<HTMLInputElement>("[data-progress]");
+    const volume = control.querySelector<HTMLInputElement>("[data-volume]");
+    const speedButtons = control.querySelectorAll<HTMLButtonElement>("[data-speed]");
+
+    if (!audio || !playButton || !muteButton || !menuButton || !menu || !progress || !volume) {
+      continue;
+    }
+
+    const audioLabel = control.dataset.audioLabel ?? "audio";
+
+    const updatePlaybackState = () => {
+      control.dataset.playing = audio.paused ? "false" : "true";
+      playButton.setAttribute(
+        "aria-label",
+        audio.paused ? `Play ${audioLabel}` : `Pause ${audioLabel}`,
+      );
+    };
+
+    const updateMuteState = () => {
+      control.dataset.muted = audio.muted ? "true" : "false";
+      muteButton.setAttribute("aria-label", audio.muted ? "Unmute audio" : "Mute audio");
+    };
+
+    const updateVolumeState = () => {
+      const value = audio.muted ? 0 : audio.volume;
+      volume.value = String(value);
+      setProgressFill(volume, value);
+      updateMuteState();
+    };
+
+    const updateProgress = () => {
+      const value = audio.duration > 0 ? audio.currentTime / audio.duration : 0;
+      progress.value = String(value);
+      setProgressFill(progress, value);
+    };
+
+    const updateSpeedState = () => {
+      for (const button of speedButtons) {
+        const active = Number(button.dataset.speed) === audio.playbackRate;
+        button.setAttribute("aria-checked", String(active));
+        button.dataset.active = String(active);
+      }
+    };
+
+    setProgressFill(progress, 0);
+    setProgressFill(volume, audio.volume);
+    updatePlaybackState();
+    updateVolumeState();
+    updateSpeedState();
+    closeMenu(control);
+
+    playButton.addEventListener("click", async () => {
+      if (audio.paused) {
+        for (const other of document.querySelectorAll<HTMLAudioElement>(
+          "[data-audio-control] audio",
+        )) {
+          if (other !== audio) other.pause();
+        }
+        try {
+          await audio.play();
+        } catch {
+          updatePlaybackState();
+        }
+      } else {
+        audio.pause();
+      }
+    });
+
+    muteButton.addEventListener("click", () => {
+      audio.muted = !audio.muted;
+      updateVolumeState();
+    });
+
+    menuButton.addEventListener("click", () => {
+      const open = control.dataset.menuOpen === "true";
+      closeOtherMenus(control);
+      control.dataset.menuOpen = open ? "false" : "true";
+      menuButton.setAttribute("aria-expanded", String(!open));
+    });
+
+    menu.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    progress.addEventListener("input", () => {
+      if (audio.duration > 0) {
+        audio.currentTime = Number(progress.value) * audio.duration;
+      }
+      setProgressFill(progress, Number(progress.value));
+    });
+
+    volume.addEventListener("input", () => {
+      audio.volume = Number(volume.value);
+      audio.muted = audio.volume === 0;
+      updateVolumeState();
+    });
+
+    for (const button of speedButtons) {
+      button.addEventListener("click", () => {
+        audio.playbackRate = Number(button.dataset.speed ?? 1);
+        updateSpeedState();
+      });
+    }
+
+    audio.addEventListener("loadedmetadata", updateProgress);
+    audio.addEventListener("timeupdate", updateProgress);
+    audio.addEventListener("play", updatePlaybackState);
+    audio.addEventListener("pause", updatePlaybackState);
+    audio.addEventListener("ended", updatePlaybackState);
+    audio.addEventListener("volumechange", updateVolumeState);
+    audio.addEventListener("ratechange", updateSpeedState);
+  }
+
+  if (!audioWindow.__muniAudioGlobalBound) {
+    audioWindow.__muniAudioGlobalBound = true;
+
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-audio-control]")) return;
+      closeOtherMenus();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeOtherMenus();
+    });
+  }
+</script>
+
+<style>
+  @reference "../styles/global.css";
+
+  .audio-control {
+    @apply relative grid h-8 w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-1 rounded-full border border-zinc-200 bg-zinc-100/95 px-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:border-zinc-700 dark:bg-zinc-800/95 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)];
+  }
+
+  .audio-button {
+    @apply grid h-6 w-6 shrink-0 place-items-center rounded-full text-zinc-800 transition-[background-color,color,transform] duration-150 hover:bg-zinc-200 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-zinc-100 dark:hover:bg-zinc-700;
+  }
+
+  .audio-button :global(svg) {
+    @apply h-4 w-4;
+  }
+
+  .audio-play :global(svg) {
+    @apply h-4.5 w-4.5;
+  }
+
+  .audio-icon {
+    @apply grid place-items-center;
+  }
+
+  .audio-icon--pause,
+  .audio-icon--muted,
+  .audio-control[data-playing="true"] .audio-icon--play,
+  .audio-control[data-muted="true"] .audio-icon--volume {
+    @apply hidden;
+  }
+
+  .audio-control[data-playing="true"] .audio-icon--pause,
+  .audio-control[data-muted="true"] .audio-icon--muted {
+    @apply grid;
+  }
+
+  .audio-progress {
+    --range-fill: 0%;
+    @apply h-6 min-w-0 cursor-pointer appearance-none bg-transparent;
+  }
+
+  .audio-progress::-webkit-slider-runnable-track,
+  .audio-volume::-webkit-slider-runnable-track {
+    height: 0.25rem;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      var(--color-blue-600) var(--range-fill),
+      var(--color-zinc-300) var(--range-fill)
+    );
+  }
+
+  .audio-progress::-webkit-slider-thumb,
+  .audio-volume::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 0.75rem;
+    height: 0.75rem;
+    margin-top: -0.25rem;
+    border-radius: 999px;
+    background: var(--color-zinc-900);
+  }
+
+  .audio-progress::-moz-range-track,
+  .audio-volume::-moz-range-track {
+    height: 0.25rem;
+    border-radius: 999px;
+    background: var(--color-zinc-300);
+  }
+
+  .audio-progress::-moz-range-progress,
+  .audio-volume::-moz-range-progress {
+    height: 0.25rem;
+    border-radius: 999px;
+    background: var(--color-blue-600);
+  }
+
+  .audio-progress::-moz-range-thumb,
+  .audio-volume::-moz-range-thumb {
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--color-zinc-900);
+  }
+
+  .dark .audio-progress::-webkit-slider-runnable-track,
+  .dark .audio-volume::-webkit-slider-runnable-track {
+    background: linear-gradient(
+      to right,
+      var(--color-blue-400) var(--range-fill),
+      var(--color-zinc-600) var(--range-fill)
+    );
+  }
+
+  .dark .audio-progress::-webkit-slider-thumb,
+  .dark .audio-volume::-webkit-slider-thumb,
+  .dark .audio-volume::-moz-range-thumb,
+  .dark .audio-progress::-moz-range-thumb {
+    background: var(--color-zinc-50);
+  }
+
+  .dark .audio-progress::-moz-range-track,
+  .dark .audio-volume::-moz-range-track {
+    background: var(--color-zinc-600);
+  }
+
+  .dark .audio-progress::-moz-range-progress,
+  .dark .audio-volume::-moz-range-progress {
+    background: var(--color-blue-400);
+  }
+
+  .audio-menu-shell {
+    @apply relative grid place-items-center;
+  }
+
+  .audio-menu {
+    @apply pointer-events-none absolute right-0 bottom-[calc(100%+0.375rem)] z-20 w-36 origin-bottom-right translate-y-1 rounded-md border border-zinc-200 bg-white p-1 opacity-0 shadow-lg shadow-zinc-950/10 transition-[opacity,transform] duration-150 dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/30;
+  }
+
+  .audio-control[data-menu-open="true"] .audio-menu {
+    @apply pointer-events-auto translate-y-0 opacity-100;
+  }
+
+  .audio-menu-row {
+    @apply grid grid-cols-[auto_1fr] items-center gap-2 rounded px-2 py-1.5;
+  }
+
+  .audio-menu-label {
+    @apply text-[0.68rem] font-medium text-zinc-500 dark:text-zinc-400;
+  }
+
+  .audio-volume {
+    --range-fill: 100%;
+    @apply h-5 min-w-0 cursor-pointer appearance-none bg-transparent;
+  }
+
+  .audio-speed-row {
+    @apply mx-1 grid grid-cols-3 gap-0.5 rounded-full bg-zinc-100 p-0.5 dark:bg-zinc-800;
+  }
+
+  .audio-speed-row button {
+    @apply h-6 rounded-full px-1 text-[0.65rem] font-semibold text-zinc-500 transition-colors hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-zinc-400 dark:hover:text-zinc-100;
+  }
+
+  .audio-speed-row button[data-active="true"] {
+    @apply bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-50;
+  }
+
+  .audio-menu-item {
+    @apply mt-1 flex h-7 items-center gap-2 rounded px-2 text-xs font-medium text-zinc-700 no-underline transition-colors hover:bg-zinc-100 hover:text-zinc-950 hover:no-underline focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:hover:text-zinc-50;
+  }
+
+  .audio-menu-item :global(svg) {
+    @apply h-3.5 w-3.5;
+  }
+</style>

@@ -1,0 +1,21 @@
+<section
+  class="abstract-section full-bleed not-prose my-6 border-y border-zinc-200/80 bg-zinc-50/70 py-6 dark:border-zinc-800 dark:bg-zinc-900/70"
+>
+  <div
+    class="mx-[var(--actual-inline-margin)] border-l border-zinc-300 pl-5 dark:border-zinc-700"
+  >
+    <slot />
+  </div>
+</section>
+
+<style>
+  @reference "../styles/global.css";
+
+  .abstract-section :global(p) {
+    @apply my-0 text-base leading-8 text-zinc-700 dark:text-zinc-200;
+  }
+
+  .abstract-section :global(em) {
+    @apply font-medium text-zinc-900 not-italic dark:text-zinc-50;
+  }
+</style>
