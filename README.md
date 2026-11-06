@@ -1,4 +1,12 @@
-# Academic project page template
+# MUNI project website
+
+Project page for **MUNI: Multimodal Unified Latent Diffusion for Coherent Any-to-Any Generation** (**NeurIPS 2026**).
+
+[Website](https://muni-proj.github.io/) | [Paper](https://arxiv.org/abs/2606.16408) | [Code](https://github.com/KAIST-Visual-AI-Group/MUNI)
+
+Paper metadata, resource links, the search/social description, and the conference BibTeX citation are maintained in [`src/paper.mdx`](src/paper.mdx).
+
+## Template
 
 This is a template to help you build a professional project page for your research paper, based on the design from the original [Nerfies page](https://nerfies.github.io/). Instead of manually editing an HTML file, you can author the page's content in Markdown and make use of a polished set of components, then deploy it with GitHub Pages. [See a live demo of the template](https://research-template.roman.technology).
 
